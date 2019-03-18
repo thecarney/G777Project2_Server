@@ -4,10 +4,15 @@ const cors = require('cors');
 const app = express();
 const fs = require('fs');
 const { Client, Query } = require('pg');
+const multer = require("multer");
+var Jimp = require('jimp');
 // set port
 const port = 3002;
 // make CORS compatible
 app.use(cors());
+
+app.use(express.static(__dirname + '/public'));
+
 // db setup
 var username = "postgres" // ADD FEATURE: multiple rolls
 //var password = "yourPassword" // read only privileges on our table
@@ -15,10 +20,59 @@ var host = "localhost:5432"
 var database = "tsp" // database name
 var conString = "postgres://"+username+":"+"@"+host+"/"+database; // Your Database Connection
 
+// for multer
+const handleError = (err, res) => {
+    res
+        .status(500)
+        .contentType("text/plain")
+        .end("Oops! There was an error!");
+};
+
+// for photo upload
+var storage = multer.diskStorage({
+    destination: 'photos/',
+    filename: function (req, file, cb) {
+        cb(null, "pid_" + Date.now() + ".jpg")
+    }
+});
+
+var upload = multer({
+    storage: storage,
+    limits: {
+        limits: {
+            fields: 10,
+            fileSize: 2500000,
+            files: 1,
+            parts: 11
+        }
+    }
+});
 
 
 
+// REPORTS ROUTES
+app.get('/p2/reports', function (req, res) {
+    // server note
+    console.log("GET request for reports json");
 
+    var sqlQuery =
+        "SELECT * FROM ts_report";
+
+    // connect to db
+    var client = new Client(conString);
+    client.connect();
+    var query = client.query(new Query(sqlQuery));
+    query.on("row", function(row, result){
+        result.addRow(row);
+    });
+    query.on("end", function(result){
+        //res.send(result.rows[0].row_to_json);
+        res.json(result);
+        //res.send(result.rows[]);
+        res.end();
+        client.end();
+    });
+});
 
 // PHOTOS ROUTES
 app.get('/p2/photos', function (req, res) {
@@ -44,6 +98,47 @@ app.get('/p2/photos', function (req, res) {
         res.send(result.rows[0].row_to_json);
         res.end();
         client.end();
+    });
+});
+
+app.post('/p2/postPhoto', upload.single("photo"), function (req, res, next) {
+    console.log("POST request for photos");
+    console.log(req.file.filename);
+    let fileName = req.file.filename;
+    Jimp.read("photos/"+req.file.filename)
+        .then(photo => {
+            return photo
+                .resize(256, 256) // resize
+                .quality(60) // set JPEG quality
+                .write("public/images/"+req.file.filename); // save
+        });
+
+
+
+
+    let caption = req.body.caption;
+    let heading = req.body.facing;
+    let latlonString = req.body.latlon.replace(/\s/g,"");
+    let latlonArr = latlonString.split(",");
+    let lat = latlonArr[0];
+    let lon = latlonArr[1];
+
+    let pointString = "ST_GeomFromText('MULTIPOINT(" + lon + " " + lat + ")', 4326)";
+
+    let queryText = "INSERT INTO ts_photos (id, tscaption, tsfilenm, tshead, geom) VALUES (default, $1, $2, $3, " + pointString + ") RETURNING *";
+    let values = [caption, fileName, heading];
+
+    var client = new Client(conString);
+    client.connect();
+    client.query(queryText, values, (err, res2) => {
+        if (err) {
+            console.log(err.stack)
+        } else {
+            console.log(res2.rows[0])
+            res.send("point added to database");
+            res.end();
+            client.end();
+        }
     });
 });
 
