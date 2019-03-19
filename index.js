@@ -232,7 +232,7 @@ app.get('/p2/lawn', function (req, res) {
         "SELECT row_to_json(fc) FROM ( " +
         "SELECT 'FeatureCollection' As type, array_to_json(array_agg(f)) As features FROM (" +
         "SELECT 'Feature' As type, ST_AsGeoJSON(fg.geom)::json As geometry, " +
-        "row_to_json((id, tsname, tsdesc, tsaccess)) As properties FROM ts_lawn As fg" +
+        "row_to_json((id, tsname, tsdesc, tsaccess, tstype)) As properties FROM ts_lawn As fg" +
         ") As f" +
         ") As fc";
 
@@ -259,7 +259,7 @@ app.get('/p2/mulch', function (req, res) {
         "SELECT row_to_json(fc) FROM ( " +
         "SELECT 'FeatureCollection' As type, array_to_json(array_agg(f)) As features FROM (" +
         "SELECT 'Feature' As type, ST_AsGeoJSON(fg.geom)::json As geometry, " +
-        "row_to_json((id, tsname, tsdesc, tsaccess)) As properties FROM ts_mulch As fg" +
+        "row_to_json((id, tsname, tsdesc, tsaccess, tstype)) As properties FROM ts_mulch As fg" +
         ") As f" +
         ") As fc";
 
@@ -286,7 +286,7 @@ app.get('/p2/pavement', function (req, res) {
         "SELECT row_to_json(fc) FROM ( " +
         "SELECT 'FeatureCollection' As type, array_to_json(array_agg(f)) As features FROM (" +
         "SELECT 'Feature' As type, ST_AsGeoJSON(fg.geom)::json As geometry, " +
-        "row_to_json((id, tsname, tsdesc, tsaccess)) As properties FROM ts_pavement As fg" +
+        "row_to_json((id, tsname, tsdesc, tsaccess, tstype)) As properties FROM ts_pavement As fg" +
         ") As f" +
         ") As fc";
 
@@ -313,7 +313,7 @@ app.get('/p2/playground', function (req, res) {
         "SELECT row_to_json(fc) FROM ( " +
         "SELECT 'FeatureCollection' As type, array_to_json(array_agg(f)) As features FROM (" +
         "SELECT 'Feature' As type, ST_AsGeoJSON(fg.geom)::json As geometry, " +
-        "row_to_json((id, tsname, tsdesc, tsaccess)) As properties FROM ts_playground As fg" +
+        "row_to_json((id, tsname, tsdesc, tsaccess, tstype)) As properties FROM ts_playground As fg" +
         ") As f" +
         ") As fc";
 
@@ -367,7 +367,7 @@ app.get('/p2/sandbox', function (req, res) {
         "SELECT row_to_json(fc) FROM ( " +
         "SELECT 'FeatureCollection' As type, array_to_json(array_agg(f)) As features FROM (" +
         "SELECT 'Feature' As type, ST_AsGeoJSON(fg.geom)::json As geometry, " +
-        "row_to_json((id, tsname, tsdesc, tsaccess)) As properties FROM ts_sandbox As fg" +
+        "row_to_json((id, tsname, tsdesc, tsaccess, tstype)) As properties FROM ts_sandbox As fg" +
         ") As f" +
         ") As fc";
 
