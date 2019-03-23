@@ -11,14 +11,14 @@ const port = 3002;
 // make CORS compatible
 app.use(cors());
 
+// filesystem directory with photos can be accessed directly by client with a URL
 app.use(express.static(__dirname + '/public'));
 
 // db setup
-var username = "postgres" // ADD FEATURE: multiple rolls
-//var password = "yourPassword" // read only privileges on our table
+var username = "postgres"
 var host = "localhost:5432"
 var database = "tsp" // database name
-var conString = "postgres://"+username+":"+"@"+host+"/"+database; // Your Database Connection
+var conString = "postgres://"+username+":"+"@"+host+"/"+database;
 
 // for multer
 const handleError = (err, res) => {
@@ -36,6 +36,7 @@ var storage = multer.diskStorage({
     }
 });
 
+// photo limits for security of my local server
 var upload = multer({
     storage: storage,
     limits: {
@@ -47,8 +48,6 @@ var upload = multer({
         }
     }
 });
-
-
 
 // REPORTS ROUTES
 app.get('/p2/reports', function (req, res) {
@@ -71,6 +70,34 @@ app.get('/p2/reports', function (req, res) {
         //res.send(result.rows[]);
         res.end();
         client.end();
+    });
+});
+
+app.post('/p2/postReport', upload.single("photo"), function (req, res, next) {
+    console.log("POST request for report");
+
+    let tsrelfeature = req.body.tsrelfeature;
+    let tsdetails = req.body.tsdetails;
+    let tstype = req.body.tstype;
+    let tsemail = req.body.tsemail;
+    let tsphone = req.body.tsphone;
+
+    //console.log(tsrelfeature+"\n"+tsdetails+"\n"+tstype+"\n"+tsemail+"\n"+tsphone);
+
+    let queryText = "INSERT INTO ts_report (tstype, tsdetails, tsrelfeature, tsphone, tsemail) VALUES ($1, $2, $3, $4, $5) RETURNING *";
+    let values = [tstype, tsdetails, tsrelfeature, tsphone, tsemail];
+
+    var client = new Client(conString);
+    client.connect();
+    client.query(queryText, values, (err, res2) => {
+        if (err) {
+            console.log(err.stack)
+        } else {
+            //console.log(res2.rows[0])
+            res.send("report added to database");
+            res.end();
+            client.end();
+        }
     });
 });
 
@@ -103,7 +130,7 @@ app.get('/p2/photos', function (req, res) {
 
 app.post('/p2/postPhoto', upload.single("photo"), function (req, res, next) {
     console.log("POST request for photos");
-    console.log(req.file.filename);
+    //console.log(req.file.filename);
     let fileName = req.file.filename;
     Jimp.read("photos/"+req.file.filename)
         .then(photo => {
@@ -112,9 +139,6 @@ app.post('/p2/postPhoto', upload.single("photo"), function (req, res, next) {
                 .quality(60) // set JPEG quality
                 .write("public/images/"+req.file.filename); // save
         });
-
-
-
 
     let caption = req.body.caption;
     let heading = req.body.facing;
@@ -134,7 +158,7 @@ app.post('/p2/postPhoto', upload.single("photo"), function (req, res, next) {
         if (err) {
             console.log(err.stack)
         } else {
-            console.log(res2.rows[0])
+            //console.log(res2.rows[0])
             res.send("point added to database");
             res.end();
             client.end();
@@ -151,7 +175,7 @@ app.get('/p2/bbcourt', function (req, res) {
         "SELECT row_to_json(fc) FROM ( " +
         "SELECT 'FeatureCollection' As type, array_to_json(array_agg(f)) As features FROM (" +
         "SELECT 'Feature' As type, ST_AsGeoJSON(fg.geom)::json As geometry, " +
-        "row_to_json((id, tsname, tsdesc, tsaccess)) As properties FROM ts_bbcourt_linework As fg" +
+        "row_to_json((id, tsname, tsdesc, tsaccess, tstablenm)) As properties FROM ts_bbcourt_linework As fg" +
         ") As f" +
         ") As fc";
 
@@ -178,7 +202,7 @@ app.get('/p2/benches', function (req, res) {
         "SELECT row_to_json(fc) FROM ( " +
         "SELECT 'FeatureCollection' As type, array_to_json(array_agg(f)) As features FROM (" +
         "SELECT 'Feature' As type, ST_AsGeoJSON(fg.geom)::json As geometry, " +
-        "row_to_json((id, tsname, tsdesc, tsaccess)) As properties FROM ts_benches As fg" +
+        "row_to_json((id, tsname, tsdesc, tsaccess, tstablenm)) As properties FROM ts_benches As fg" +
         ") As f" +
         ") As fc";
 
@@ -205,7 +229,7 @@ app.get('/p2/equipment', function (req, res) {
         "SELECT row_to_json(fc) FROM ( " +
         "SELECT 'FeatureCollection' As type, array_to_json(array_agg(f)) As features FROM (" +
         "SELECT 'Feature' As type, ST_AsGeoJSON(fg.geom)::json As geometry, " +
-        "row_to_json((id, tsname, tsdesc, tsaccess)) As properties FROM ts_equipment As fg" +
+        "row_to_json((id, tsname, tsdesc, tsaccess, tstablenm)) As properties FROM ts_equipment As fg" +
         ") As f" +
         ") As fc";
 
@@ -232,7 +256,7 @@ app.get('/p2/lawn', function (req, res) {
         "SELECT row_to_json(fc) FROM ( " +
         "SELECT 'FeatureCollection' As type, array_to_json(array_agg(f)) As features FROM (" +
         "SELECT 'Feature' As type, ST_AsGeoJSON(fg.geom)::json As geometry, " +
-        "row_to_json((id, tsname, tsdesc, tsaccess, tstype)) As properties FROM ts_lawn As fg" +
+        "row_to_json((id, tsname, tsdesc, tsaccess, tstype, tstablenm)) As properties FROM ts_lawn As fg" +
         ") As f" +
         ") As fc";
 
@@ -259,7 +283,7 @@ app.get('/p2/mulch', function (req, res) {
         "SELECT row_to_json(fc) FROM ( " +
         "SELECT 'FeatureCollection' As type, array_to_json(array_agg(f)) As features FROM (" +
         "SELECT 'Feature' As type, ST_AsGeoJSON(fg.geom)::json As geometry, " +
-        "row_to_json((id, tsname, tsdesc, tsaccess, tstype)) As properties FROM ts_mulch As fg" +
+        "row_to_json((id, tsname, tsdesc, tsaccess, tstype, tstablenm)) As properties FROM ts_mulch As fg" +
         ") As f" +
         ") As fc";
 
@@ -286,7 +310,7 @@ app.get('/p2/pavement', function (req, res) {
         "SELECT row_to_json(fc) FROM ( " +
         "SELECT 'FeatureCollection' As type, array_to_json(array_agg(f)) As features FROM (" +
         "SELECT 'Feature' As type, ST_AsGeoJSON(fg.geom)::json As geometry, " +
-        "row_to_json((id, tsname, tsdesc, tsaccess, tstype)) As properties FROM ts_pavement As fg" +
+        "row_to_json((id, tsname, tsdesc, tsaccess, tstype, tstablenm)) As properties FROM ts_pavement As fg" +
         ") As f" +
         ") As fc";
 
@@ -313,7 +337,7 @@ app.get('/p2/playground', function (req, res) {
         "SELECT row_to_json(fc) FROM ( " +
         "SELECT 'FeatureCollection' As type, array_to_json(array_agg(f)) As features FROM (" +
         "SELECT 'Feature' As type, ST_AsGeoJSON(fg.geom)::json As geometry, " +
-        "row_to_json((id, tsname, tsdesc, tsaccess, tstype)) As properties FROM ts_playground As fg" +
+        "row_to_json((id, tsname, tsdesc, tsaccess, tstype, tstablenm)) As properties FROM ts_playground As fg" +
         ") As f" +
         ") As fc";
 
@@ -340,7 +364,7 @@ app.get('/p2/parkloop', function (req, res) {
         "SELECT row_to_json(fc) FROM ( " +
         "SELECT 'FeatureCollection' As type, array_to_json(array_agg(f)) As features FROM (" +
         "SELECT 'Feature' As type, ST_AsGeoJSON(fg.geom)::json As geometry, " +
-        "row_to_json((id, tsname, tsdesc, tsaccess)) As properties FROM ts_parkloop As fg" +
+        "row_to_json((id, tsname, tsdesc, tsaccess, tstablenm)) As properties FROM ts_parkloop As fg" +
         ") As f" +
         ") As fc";
 
@@ -367,7 +391,7 @@ app.get('/p2/sandbox', function (req, res) {
         "SELECT row_to_json(fc) FROM ( " +
         "SELECT 'FeatureCollection' As type, array_to_json(array_agg(f)) As features FROM (" +
         "SELECT 'Feature' As type, ST_AsGeoJSON(fg.geom)::json As geometry, " +
-        "row_to_json((id, tsname, tsdesc, tsaccess, tstype)) As properties FROM ts_sandbox As fg" +
+        "row_to_json((id, tsname, tsdesc, tsaccess, tstype, tstablenm)) As properties FROM ts_sandbox As fg" +
         ") As f" +
         ") As fc";
 
@@ -394,7 +418,7 @@ app.get('/p2/picnic', function (req, res) {
         "SELECT row_to_json(fc) FROM ( " +
         "SELECT 'FeatureCollection' As type, array_to_json(array_agg(f)) As features FROM (" +
         "SELECT 'Feature' As type, ST_AsGeoJSON(fg.geom)::json As geometry, " +
-        "row_to_json((id, tsname, tsdesc, tsaccess)) As properties FROM ts_tables As fg" +
+        "row_to_json((id, tsname, tsdesc, tsaccess, tstablenm)) As properties FROM ts_tables As fg" +
         ") As f" +
         ") As fc";
 
@@ -421,7 +445,7 @@ app.get('/p2/trees', function (req, res) {
         "SELECT row_to_json(fc) FROM ( " +
             "SELECT 'FeatureCollection' As type, array_to_json(array_agg(f)) As features FROM (" +
                 "SELECT 'Feature' As type, ST_AsGeoJSON(fg.geom)::json As geometry, " +
-                "row_to_json((id, tsname)) As properties FROM ts_trees As fg" +
+                "row_to_json((id, tsname, tstablenm)) As properties FROM ts_trees As fg" +
            ") As f" +
         ") As fc";
 
